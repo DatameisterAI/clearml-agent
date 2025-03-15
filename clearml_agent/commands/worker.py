@@ -3167,9 +3167,44 @@ class Worker(ServiceCommandSection):
             command = Argv(Path(os.environ.get("SHELL", "/bin/bash")), *extra)
         elif is_pants_binary:
             # support running Pants binary
-            pants_bin = find_executable('pants')
+            # Custom function to find pants binary
+            def find_pants_binary():
+                """
+                Search for pants binary in common locations, with priority to ~/.local/bin
+                Returns the full path to pants if found, None otherwise
+                """
+                # Check ~/.local/bin first (common user installation location)
+                user_local_bin = os.path.expanduser("~/.local/bin/pants")
+                if os.path.isfile(user_local_bin) and os.access(user_local_bin, os.X_OK):
+                    return user_local_bin
+                
+                # Then check standard PATH
+                pants_in_path = find_executable('pants')
+                if pants_in_path:
+                    return pants_in_path
+                
+                # Additional common locations to check
+                common_locations = [
+                    "/usr/local/bin/pants",
+                    "/opt/pants/bin/pants",
+                    os.path.expanduser("~/bin/pants"),
+                    # Add project-relative location (often used in monorepos)
+                    os.path.join(script_dir, "pants"),
+                    os.path.join(script_dir, ".pants/bin/pants")
+                ]
+                
+                for location in common_locations:
+                    if os.path.isfile(location) and os.access(location, os.X_OK):
+                        return location
+                
+                return None
+
+            # Use the custom function to find the pants binary
+            pants_bin = find_pants_binary()
             if pants_bin:
                 command = Argv(Path(pants_bin), "run", *extra)
+            else:
+                raise ValueError("Could not find Pants binary. Please ensure it's installed and in your PATH.")
         else:
             # actually we should not be here because we default to python is we do not recognize the binary
             raise ValueError("Task execution binary requested {} is not supported!".format(current_task.script.binary))
