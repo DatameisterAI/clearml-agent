@@ -3160,6 +3160,7 @@ class Worker(ServiceCommandSection):
         except Exception:
             extra.append(execution.entry_point)
 
+        command = None
         if is_python_binary:
             command = self.package_api.get_python_command(extra)
         elif is_bash_binary:
@@ -3173,6 +3174,8 @@ class Worker(ServiceCommandSection):
             # actually we should not be here because we default to python is we do not recognize the binary
             raise ValueError("Task execution binary requested {} is not supported!".format(current_task.script.binary))
 
+        if command:
+            print(command)
         print("[{}]$ {}".format(execution.working_dir, command.pretty()))
 
         if freeze:
