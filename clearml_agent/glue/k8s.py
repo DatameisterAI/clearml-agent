@@ -83,14 +83,29 @@ class K8sIntegration(Worker):
             '[ ! -z "$CLEARML_AGENT_SKIP_CONTAINER_APT" ] || {}'.format(line)
             for line in _CONTAINER_APT_SCRIPT_SECTION
         ),
-        "declare LOCAL_PYTHON",
-        "[ ! -z $LOCAL_PYTHON ] || for i in {{20..5}}; do (which python3.$i 2> /dev/null || command -v python3.$i) && python3.$i -m pip --version && export LOCAL_PYTHON=$(which python3.$i 2> /dev/null || command -v python3.$i) && break ; done",
-        '[ ! -z "$CLEARML_AGENT_SKIP_CONTAINER_APT" ] || [ ! -z "$LOCAL_PYTHON" ] || apt-get install -y python3-pip || dnf install -y python3-pip',
-        "[ ! -z $LOCAL_PYTHON ] || export LOCAL_PYTHON=python3",
+        # Install pyenv and the desired Python version (specified in the PYTHON_VERSION env variable)
+        '[ ! -z "$PYTHON_VERSION" ] && {{ '
+        'curl https://pyenv.run | bash; '
+        'export PYENV_ROOT="$HOME/.pyenv"; '
+        'export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"; '
+        'pyenv install -s $PYTHON_VERSION; '
+        'pyenv global $PYTHON_VERSION; '
+        'echo "Installed Python $(python --version) via pyenv"; '
+        '}}',
+        # Set LOCAL_PYTHON to the now available python
+        'export LOCAL_PYTHON=$(command -v python)',
         "rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED",  # remove PEP 668
         "{extra_bash_init_cmd}",
-        # Modified installation command: escape curly braces in bash conditional
-        '[ ! -z "$CLEARML_AGENT_NO_UPDATE" ] || {{ if [ -n "$CLEARML_AGENT_FORK_URL" ]; then echo "Installing clearml-agent from fork: $CLEARML_AGENT_FORK_URL"; $LOCAL_PYTHON -m pip install git+$CLEARML_AGENT_FORK_URL; else $LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}; fi; }}',
+        # Install clearml-agent: escape the if-block curly braces with double braces,
+        # but leave the {agent_install_args} placeholder intact.
+        '[ ! -z "$CLEARML_AGENT_NO_UPDATE" ] || {{ '
+        'if [ -n "$CLEARML_AGENT_FORK_URL" ]; then '
+        'echo "Installing clearml-agent from fork: $CLEARML_AGENT_FORK_URL"; '
+        '$LOCAL_PYTHON -m pip install git+$CLEARML_AGENT_FORK_URL; '
+        'else '
+        '$LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}; '
+        'fi; '
+        '}}',
         "{extra_docker_bash_script}",
         "$LOCAL_PYTHON -m clearml_agent execute {default_execution_agent_args} --id {task_id}"
     ]
