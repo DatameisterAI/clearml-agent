@@ -3165,7 +3165,10 @@ class Worker(ServiceCommandSection):
         elif is_bash_binary:
             command = Argv(Path(os.environ.get("SHELL", "/bin/bash")), *extra)
         elif is_pants_binary:
-            command = Argv("pants run", *extra)
+            # support running Pants binary
+            pants_bin = find_executable('pants')
+            if pants_bin:
+                command = Argv(Path(pants_bin), "run", *extra)
         else:
             # actually we should not be here because we default to python is we do not recognize the binary
             raise ValueError("Task execution binary requested {} is not supported!".format(current_task.script.binary))

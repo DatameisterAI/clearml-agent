@@ -89,14 +89,8 @@ class K8sIntegration(Worker):
         "[ ! -z $LOCAL_PYTHON ] || export LOCAL_PYTHON=python3",
         "rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED",  # remove PEP 668
         "{extra_bash_init_cmd}",
-        # Modified installation command: if CLEARML_AGENT_FORK_URL is set, install from the forked repo via git+
-        '[ ! -z "$CLEARML_AGENT_NO_UPDATE" ] || { '
-        'if [ -n "$CLEARML_AGENT_FORK_URL" ]; then '
-        'echo "Installing clearml-agent from fork: $CLEARML_AGENT_FORK_URL"; '
-        '$LOCAL_PYTHON -m pip install git+$CLEARML_AGENT_FORK_URL{agent_install_args}; '
-        'else '
-        '$LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}; '
-        'fi; }',
+        # Modified installation command: escape curly braces in bash conditional
+        '[ ! -z "$CLEARML_AGENT_NO_UPDATE" ] || {{ if [ -n "$CLEARML_AGENT_FORK_URL" ]; then echo "Installing clearml-agent from fork: $CLEARML_AGENT_FORK_URL"; $LOCAL_PYTHON -m pip install git+$CLEARML_AGENT_FORK_URL; else $LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}; fi; }}',
         "{extra_docker_bash_script}",
         "$LOCAL_PYTHON -m clearml_agent execute {default_execution_agent_args} --id {task_id}"
     ]
@@ -479,16 +473,7 @@ class K8sIntegration(Worker):
                 )
 
                 for attempt in range(2):
-                    res = self._session.send_request(
-                        "tasks",
-                        "enqueue",
-                        json={
-                            "task": task_id,
-                            "queue": self.k8s_pending_queue_id,
-                            "status_reason": "k8s pending scheduler",
-                            "update_execution_queue": False,
-                        }
-                    )
+                    res = self._session.send_request("tasks", "enqueue", json={"task": task_id, "queue": self.k8s_pending_queue_id, "status_reason": "k8s pending scheduler", "update_execution_queue": True})
                     if res.ok:
                         break
 

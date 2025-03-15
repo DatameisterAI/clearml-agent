@@ -31,8 +31,6 @@ echo "api.api_server: ${CLEARML_API_HOST}" >> ~/clearml.conf
 echo "api.web_server: ${CLEARML_WEB_HOST}" >> ~/clearml.conf
 echo "api.files_server: ${CLEARML_FILES_HOST}" >> ~/clearml.conf
 
-./provider_entrypoint.sh
-
 if [[ -z "${K8S_GLUE_MAX_PODS}" ]]
 then
   python3 k8s_glue_example.py --queue ${QUEUE} ${EXTRA_ARGS}
