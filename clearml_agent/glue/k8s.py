@@ -73,9 +73,8 @@ class K8sIntegration(Worker):
         "export DEBIAN_FRONTEND='noninteractive'",
         "echo 'Binary::apt::APT::Keep-Downloaded-Packages \"true\";' > /etc/apt/apt.conf.d/docker-clean",
         "chown -R $(whoami) $HOME/.cache/pip",
-        "(apt-get update -y ; apt-get install -y git curl) || "
-        "(dnf install -y git)"
-        # should only be added if docker_install_opencv_libs:  # libsm6 libxext6 libxrender-dev libglib2.0-0",
+        # Install curl, git and additional build dependencies for Python
+        "(apt-get update -y ; apt-get install -y curl git build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev libgdbm-dev uuid-dev libnss3-dev libxml2-dev libxmlsec1-dev) || (dnf install -y curl git)"
     ]
 
     CONTAINER_BASH_SCRIPT = [
@@ -95,8 +94,7 @@ class K8sIntegration(Worker):
         # Set LOCAL_PYTHON to the now available python
         'export LOCAL_PYTHON=$(command -v python)',
         "rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED",  # remove PEP 668
-        # Install Pants
-        "apt-get update && apt-get install -y curl",
+        # Install Pants and update PATH to include it
         "curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash",
         "export PATH=\"$HOME/.local/bin:$PATH\"",
         "{extra_bash_init_cmd}",
