@@ -95,6 +95,9 @@ class K8sIntegration(Worker):
         # Set LOCAL_PYTHON to the now available python
         'export LOCAL_PYTHON=$(command -v python)',
         "rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED",  # remove PEP 668
+        # Install Pants
+        "curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash",
+        "export PATH=\"$HOME/.local/bin:$PATH\"",
         "{extra_bash_init_cmd}",
         # Install clearml-agent: escape the if-block curly braces with double braces,
         # but leave the {agent_install_args} placeholder intact.
