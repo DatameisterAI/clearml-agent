@@ -23,7 +23,6 @@ from clearml_agent.definitions import (
     ENV_AGENT_GIT_USER,
     ENV_AGENT_GIT_PASS,
     ENV_FORCE_SYSTEM_SITE_PACKAGES,
-    ENV_AGENT_DEBUG_GET_NEXT_TASK,
 )
 from clearml_agent.errors import APIError, UsageError
 from clearml_agent.glue.errors import GetPodCountError
@@ -85,14 +84,19 @@ class K8sIntegration(Worker):
             for line in _CONTAINER_APT_SCRIPT_SECTION
         ),
         "declare LOCAL_PYTHON",
-        "[ ! -z $LOCAL_PYTHON ] || for i in {{20..5}}; do (which python3.$i 2> /dev/null || command -v python3.$i) && python3.$i -m pip --version && "
-        "export LOCAL_PYTHON=$(which python3.$i 2> /dev/null || command -v python3.$i) && break ; done",
-        '[ ! -z "$CLEARML_AGENT_SKIP_CONTAINER_APT" ] || [ ! -z "$LOCAL_PYTHON" ] || '
-        'apt-get install -y python3-pip || dnf install -y python3-pip',
+        "[ ! -z $LOCAL_PYTHON ] || for i in {{20..5}}; do (which python3.$i 2> /dev/null || command -v python3.$i) && python3.$i -m pip --version && export LOCAL_PYTHON=$(which python3.$i 2> /dev/null || command -v python3.$i) && break ; done",
+        '[ ! -z "$CLEARML_AGENT_SKIP_CONTAINER_APT" ] || [ ! -z "$LOCAL_PYTHON" ] || apt-get install -y python3-pip || dnf install -y python3-pip',
         "[ ! -z $LOCAL_PYTHON ] || export LOCAL_PYTHON=python3",
         "rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED",  # remove PEP 668
         "{extra_bash_init_cmd}",
-        "[ ! -z $CLEARML_AGENT_NO_UPDATE ] || $LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}",
+        # Modified installation command: if CLEARML_AGENT_FORK_URL is set, install from the forked repo via git+
+        '[ ! -z "$CLEARML_AGENT_NO_UPDATE" ] || { '
+        'if [ -n "$CLEARML_AGENT_FORK_URL" ]; then '
+        'echo "Installing clearml-agent from fork: $CLEARML_AGENT_FORK_URL"; '
+        '$LOCAL_PYTHON -m pip install git+$CLEARML_AGENT_FORK_URL{agent_install_args}; '
+        'else '
+        '$LOCAL_PYTHON -m pip install clearml-agent{agent_install_args}; '
+        'fi; }',
         "{extra_docker_bash_script}",
         "$LOCAL_PYTHON -m clearml_agent execute {default_execution_agent_args} --id {task_id}"
     ]

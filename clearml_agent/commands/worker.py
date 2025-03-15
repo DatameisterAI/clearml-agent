@@ -24,7 +24,7 @@ from os.path import basename
 from tempfile import mkdtemp, NamedTemporaryFile
 from threading import Thread
 from time import sleep, time
-from typing import Text, Optional, Any, Tuple, List, Dict, Mapping, Union
+from typing import Text, Optional, Any, Tuple, List, Dict
 
 from .._vendor import attr
 from .._vendor import six
@@ -3103,7 +3103,12 @@ class Worker(ServiceCommandSection):
         if ENV_AGENT_FORCE_TASK_INIT.get():
             patch_add_task_init_call((Path(script_dir) / execution.entry_point).as_posix())
 
+        is_pants_binary = True
         is_python_binary, is_bash_binary = check_is_binary_python_or_bash(current_task.script.binary)
+
+        if is_pants_binary:
+            is_python_binary = False
+            is_bash_binary = False
 
         extra = []
         if is_python_binary:
@@ -3112,9 +3117,6 @@ class Worker(ServiceCommandSection):
                 extra.append(
                     WorkerParams(optimization=optimization).get_optimization_flag()
                 )
-        elif is_bash_binary:
-            # if we needed some arguments for bash, that's where we will add them
-            extra = []
 
         # check if this is a module load, then load it.
         # noinspection PyBroadException
@@ -3162,6 +3164,8 @@ class Worker(ServiceCommandSection):
             command = self.package_api.get_python_command(extra)
         elif is_bash_binary:
             command = Argv(Path(os.environ.get("SHELL", "/bin/bash")), *extra)
+        elif is_pants_binary:
+            command = Argv("pants run", *extra)
         else:
             # actually we should not be here because we default to python is we do not recognize the binary
             raise ValueError("Task execution binary requested {} is not supported!".format(current_task.script.binary))
@@ -3186,16 +3190,17 @@ class Worker(ServiceCommandSection):
         os.environ.update(self._get_task_os_env(self._session.config, current_task) or dict())
 
         # Add the script CWD to the python path
-        if repo_info and repo_info.root and self._session.config.get('agent.force_git_root_python_path', None):
-            python_path = get_python_path(repo_info.root, None, self.package_api,
-                                          is_conda_env=self.is_conda or self.uv.enabled)
-        else:
-            python_path = get_python_path(script_dir, execution.entry_point, self.package_api,
-                                          is_conda_env=self.is_conda or self.uv.enabled)
-        if ENV_TASK_EXTRA_PYTHON_PATH.get():
-            python_path = add_python_path(python_path, ENV_TASK_EXTRA_PYTHON_PATH.get())
-        if python_path:
-            os.environ['PYTHONPATH'] = os.pathsep.join(filter(None, (os.environ.get('PYTHONPATH', None), python_path)))
+        if not is_pants_binary:
+            if repo_info and repo_info.root and self._session.config.get('agent.force_git_root_python_path', None):
+                python_path = get_python_path(repo_info.root, None, self.package_api,
+                                            is_conda_env=self.is_conda or self.uv.enabled)
+            else:
+                python_path = get_python_path(script_dir, execution.entry_point, self.package_api,
+                                            is_conda_env=self.is_conda or self.uv.enabled)
+            if ENV_TASK_EXTRA_PYTHON_PATH.get():
+                python_path = add_python_path(python_path, ENV_TASK_EXTRA_PYTHON_PATH.get())
+            if python_path:
+                os.environ['PYTHONPATH'] = os.pathsep.join(filter(None, (os.environ.get('PYTHONPATH', None), python_path)))
 
         # check if we want to run as another user, only supported on linux
         if ENV_TASK_EXECUTE_AS_USER.get() and is_linux_platform():
