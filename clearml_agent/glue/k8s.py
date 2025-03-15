@@ -73,7 +73,7 @@ class K8sIntegration(Worker):
         "export DEBIAN_FRONTEND='noninteractive'",
         "echo 'Binary::apt::APT::Keep-Downloaded-Packages \"true\";' > /etc/apt/apt.conf.d/docker-clean",
         "chown -R $(whoami) $HOME/.cache/pip",
-        "(apt-get update -y ; apt-get install -y git) || "
+        "(apt-get update -y ; apt-get install -y git curl) || "
         "(dnf install -y git)"
         # should only be added if docker_install_opencv_libs:  # libsm6 libxext6 libxrender-dev libglib2.0-0",
     ]
