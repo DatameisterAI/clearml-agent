@@ -3204,7 +3204,7 @@ class Worker(ServiceCommandSection):
             if pants_bin:
                 # sleep for 5 minutes
                 print("Sleeping for 5 minutes before running Pants")
-                sleep(300)
+                sleep(900)
             else:
                 raise ValueError("Could not find Pants binary. Please ensure it's installed and in your PATH.")
         else:
