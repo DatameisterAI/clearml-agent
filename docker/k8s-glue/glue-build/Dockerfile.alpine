@@ -8,11 +8,9 @@ RUN apk add --no-cache gcc musl-dev libffi-dev
 
 # Copy the entire repository into the build stage.
 # (Ensure you run "docker build" from the repository root.)
-COPY . /clearml-agent
-
 # Install the local clearml-agent package from the repository,
 # along with a specific version constraint for cryptography.
-RUN python3 -m pip install --prefix=/install --no-cache-dir -U /clearml-agent "cryptography>=2.9"
+RUN python3 -m pip install --prefix=/install --no-cache-dir -U  "cryptography>=2.9"
 
 FROM python:${TAG} as target
 
