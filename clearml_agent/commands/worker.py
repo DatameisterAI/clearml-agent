@@ -3202,9 +3202,7 @@ class Worker(ServiceCommandSection):
             # Use the custom function to find the pants binary
             pants_bin = find_pants_binary()
             if pants_bin:
-                # sleep for 5 minutes
-                print("Sleeping for 5 minutes before running Pants")
-                sleep(900)
+                command = Argv(Path(pants_bin), "run", *extra)
             else:
                 raise ValueError("Could not find Pants binary. Please ensure it's installed and in your PATH.")
         else:
